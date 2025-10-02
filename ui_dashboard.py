@@ -40,8 +40,8 @@ class GameCard(QWidget):
         self.layout.addWidget(self.title_label)
 
         self.main_widget.setAutoFillBackground(True)
-        self.base_style = "background-color: rgba(255, 255, 255, 0.1); border-radius: 15px;"
-        self.hover_style = "background-color: rgba(255, 255, 255, 0.2); border: 1px solid #FFFFFF; border-radius: 15px;"
+        self.base_style = "background-color: rgba(0, 0, 0, 0.3); border-radius: 15px;"
+        self.hover_style = "background-color: rgba(0, 0, 0, 0.4); border: 1px solid #FFFFFF; border-radius: 15px;"
         self.main_widget.setStyleSheet(self.base_style)
 
         self.shadow = QGraphicsDropShadowEffect()
@@ -332,13 +332,14 @@ class HomePage(QMainWindow):
                 new_hovered_card_index = i
                 break
 
-        if new_hovered_card_index != self.hovered_card_index:
-            if self.hovered_card_index != -1:
-                self.game_cards[self.hovered_card_index].set_hovered(False)
-            if new_hovered_card_index != -1:
-                self.game_cards[new_hovered_card_index].set_hovered(True)
-            self.hovered_card_index = new_hovered_card_index
-            self.is_awaiting_confirmation = False
+        # If we are waiting for a click confirmation, don't change the hover state
+        if not self.is_awaiting_confirmation:
+            if new_hovered_card_index != self.hovered_card_index:
+                if self.hovered_card_index != -1:
+                    self.game_cards[self.hovered_card_index].set_hovered(False)
+                if new_hovered_card_index != -1:
+                    self.game_cards[new_hovered_card_index].set_hovered(True)
+                self.hovered_card_index = new_hovered_card_index
 
         if gesture == "CLOSED_PALM" and self.hovered_card_index != -1:
             if not self.is_awaiting_confirmation:
