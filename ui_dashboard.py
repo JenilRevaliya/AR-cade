@@ -12,15 +12,14 @@ from gesture_recognition import GestureRecognizer
 from utils import convert_cv_qt
 
 class GameCard(QWidget):
-    """A 'card' widget that renders a reflection of itself."""
+    """A 'card' widget for the game hub."""
     def __init__(self, game_class, parent=None):
         super().__init__(parent)
         self.game_class = game_class
-        # Increased height to make room for the reflection
-        self.setFixedSize(220, 450)
+        self.setFixedSize(220, 300) # Compact size without reflection
         self.setStyleSheet("background-color: transparent;")
 
-        # This is the widget we'll actually animate and reflect
+        # This is the widget we'll actually animate
         self.main_widget = QWidget(self)
         self.main_widget.setGeometry(0, 20, 220, 280) # Start in the "down" position
 
@@ -33,7 +32,7 @@ class GameCard(QWidget):
         self.icon_label.setAlignment(Qt.AlignCenter)
 
         self.title_label = QLabel(game_class.__name__.replace("Game", ""), self.main_widget)
-        self.title_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        self.title_label.setFont(QFont("Arial", 14, QFont.Bold))
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet("color: #FFFFFF;")
 
@@ -54,26 +53,10 @@ class GameCard(QWidget):
         self.float_animation = QPropertyAnimation(self.main_widget, b"pos")
         self.float_animation.setEasingCurve(QEasingCurve.OutCubic)
         self.float_animation.setDuration(200)
-        self.float_animation.valueChanged.connect(self.update)
 
         self.glow_animation = QPropertyAnimation(self.shadow, b"blurRadius")
         self.glow_animation.setEasingCurve(QEasingCurve.OutCubic)
         self.glow_animation.setDuration(200)
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        pixmap = QPixmap(self.main_widget.size())
-        pixmap.fill(Qt.transparent)
-        self.main_widget.render(pixmap, QPoint(), QRegion(self.main_widget.rect()), QWidget.RenderFlag.DrawChildren)
-        reflection_pixmap = pixmap.transformed(QTransform().scale(1, -1))
-        painter = QPainter(self)
-        reflection_y = self.main_widget.y() + self.main_widget.height() + 5
-        painter.drawPixmap(self.main_widget.x(), reflection_y, reflection_pixmap)
-        gradient = QLinearGradient(0, reflection_y, 0, reflection_y + reflection_pixmap.height())
-        gradient.setColorAt(0.0, QColor(0, 0, 0, 150))
-        gradient.setColorAt(0.7, Qt.transparent)
-        painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
-        painter.fillRect(self.main_widget.x(), reflection_y, reflection_pixmap.width(), reflection_pixmap.height(), gradient)
 
     def set_hovered(self, hovered):
         self.main_widget.setStyleSheet(self.hover_style if hovered else self.base_style)
@@ -81,7 +64,6 @@ class GameCard(QWidget):
         self.glow_animation.setEndValue(40 if hovered else 20) # Intensify glow
         self.float_animation.start()
         self.glow_animation.start()
-        self.update()
 
     def play_click_animation(self):
         # Size animation
@@ -148,9 +130,9 @@ class HomePage(QMainWindow):
         desc_label.setStyleSheet("color: #FFFFFF; padding-top: 0px;")
 
         # Navigation Bar
-        nav_bar = QWidget()
-        nav_bar_layout = QHBoxLayout(nav_bar)
-        nav_bar.setStyleSheet("""
+        self.nav_bar = QWidget()
+        nav_bar_layout = QHBoxLayout(self.nav_bar)
+        self.nav_bar.setStyleSheet("""
             QLabel {
                 color: #FFFFFF;
                 font-family: 'Arial';
@@ -159,6 +141,9 @@ class HomePage(QMainWindow):
                 background-color: transparent;
                 border-radius: 15px;
             }
+            QLabel#hover_tab {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
             QLabel#active_tab {
                 background-color: rgba(0, 255, 255, 0.2);
                 color: #00FFFF;
@@ -166,20 +151,19 @@ class HomePage(QMainWindow):
             }
         """)
 
-        home_tab = QLabel("Home")
-        home_tab.setObjectName("active_tab") # Active tab style
-        games_tab = QLabel("Games")
-        settings_tab = QLabel("Settings")
+        self.nav_tabs = []
+        home_tab, games_tab, settings_tab = QLabel("Home"), QLabel("Games"), QLabel("Settings")
+        home_tab.setObjectName("active_tab")
+        self.nav_tabs.extend([home_tab, games_tab, settings_tab])
 
         nav_bar_layout.addStretch()
-        nav_bar_layout.addWidget(home_tab)
-        nav_bar_layout.addWidget(games_tab)
-        nav_bar_layout.addWidget(settings_tab)
+        for tab in self.nav_tabs:
+            nav_bar_layout.addWidget(tab)
         nav_bar_layout.addStretch()
 
         header_layout.addWidget(logo_label)
         header_layout.addWidget(desc_label)
-        header_layout.addWidget(nav_bar)
+        header_layout.addWidget(self.nav_bar)
         self.overlay_layout.addWidget(header_widget, 0, Qt.AlignTop)
         self.overlay_layout.addStretch(1)
 
@@ -213,6 +197,12 @@ class HomePage(QMainWindow):
         self.hovered_card_index = -1
         self.is_awaiting_confirmation = False
         self.card_to_launch_index = -1
+
+        # Nav bar interaction state
+        self.hovered_nav_index = -1
+        self.active_nav_index = 0 # 'Home' is active by default
+        self.nav_awaiting_confirmation = False
+
         self.gesture_cooldown = 0
 
         # Cursor for hand tracking
@@ -263,8 +253,9 @@ class HomePage(QMainWindow):
         else:
             self.cursor.hide()
 
-        # The video feed itself no longer needs the glass overlay, it's part of the background
-        pixmap = convert_cv_qt(processed_frame, self.video_label.width(), self.video_label.height())
+        # Convert the processed frame (which is in BGR) to RGB for Qt display
+        rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+        pixmap = convert_cv_qt(rgb_frame, self.video_label.width(), self.video_label.height())
         self.video_label.setPixmap(pixmap)
 
     def update_hologram_effect(self):
@@ -283,33 +274,78 @@ class HomePage(QMainWindow):
             if self.hovered_card_index != -1:
                 self.game_cards[self.hovered_card_index].set_hovered(False)
                 self.hovered_card_index = -1
+            if self.hovered_nav_index != -1:
+                self.nav_tabs[self.hovered_nav_index].setObjectName("")
+                self.style().polish(self.nav_bar)
+                self.hovered_nav_index = -1
             self.is_awaiting_confirmation = False
+            self.nav_awaiting_confirmation = False
             return
 
         cursor_rect = self.cursor.geometry()
 
-        new_hovered_index = -1
-        for i, card in enumerate(self.game_cards):
-            if card.geometry().intersects(cursor_rect):
-                new_hovered_index = i
+        # --- NAV BAR INTERACTION ---
+        new_hovered_nav_index = -1
+        for i, tab in enumerate(self.nav_tabs):
+            tab_rect_in_overlay = tab.geometry()
+            tab_rect_in_overlay.moveTopLeft(tab.mapTo(self.ui_overlay, QPoint(0,0)))
+            if tab_rect_in_overlay.intersects(cursor_rect):
+                new_hovered_nav_index = i
                 break
 
-        if new_hovered_index != self.hovered_card_index:
+        if new_hovered_nav_index != -1:
             if self.hovered_card_index != -1:
                 self.game_cards[self.hovered_card_index].set_hovered(False)
-            if new_hovered_index != -1:
-                self.game_cards[new_hovered_index].set_hovered(True)
-            self.hovered_card_index = new_hovered_index
-            self.is_awaiting_confirmation = False # Reset confirmation if hand moves off card
+                self.hovered_card_index = -1
 
-        # New gesture logic: CLOSED_PALM to prime, OPEN_PALM to confirm
+            if new_hovered_nav_index != self.hovered_nav_index:
+                if self.hovered_nav_index != -1 and self.hovered_nav_index != self.active_nav_index:
+                    self.nav_tabs[self.hovered_nav_index].setObjectName("")
+                if new_hovered_nav_index != self.active_nav_index:
+                    self.nav_tabs[new_hovered_nav_index].setObjectName("hover_tab")
+                self.hovered_nav_index = new_hovered_nav_index
+                self.style().polish(self.nav_bar)
+
+            if gesture == "CLOSED_PALM" and self.hovered_nav_index != -1 and not self.nav_awaiting_confirmation:
+                self.nav_awaiting_confirmation = True
+                self.gesture_cooldown = 40
+            elif gesture == "OPEN_PALM" and self.nav_awaiting_confirmation:
+                if self.hovered_nav_index != -1 and self.hovered_nav_index != self.active_nav_index:
+                    self.nav_tabs[self.active_nav_index].setObjectName("")
+                    self.nav_tabs[self.hovered_nav_index].setObjectName("active_tab")
+                    self.active_nav_index = self.hovered_nav_index
+                    self.style().polish(self.nav_bar)
+                    self.gesture_cooldown = 50
+                self.nav_awaiting_confirmation = False
+            return
+
+        if self.hovered_nav_index != -1:
+            if self.hovered_nav_index != self.active_nav_index:
+                self.nav_tabs[self.hovered_nav_index].setObjectName("")
+            self.style().polish(self.nav_bar)
+            self.hovered_nav_index = -1
+
+        # --- GAME CARD INTERACTION ---
+        new_hovered_card_index = -1
+        for i, card in enumerate(self.game_cards):
+            if card.geometry().intersects(cursor_rect):
+                new_hovered_card_index = i
+                break
+
+        if new_hovered_card_index != self.hovered_card_index:
+            if self.hovered_card_index != -1:
+                self.game_cards[self.hovered_card_index].set_hovered(False)
+            if new_hovered_card_index != -1:
+                self.game_cards[new_hovered_card_index].set_hovered(True)
+            self.hovered_card_index = new_hovered_card_index
+            self.is_awaiting_confirmation = False
+
         if gesture == "CLOSED_PALM" and self.hovered_card_index != -1:
             if not self.is_awaiting_confirmation:
                 self.is_awaiting_confirmation = True
                 self.card_to_launch_index = self.hovered_card_index
                 self.game_cards[self.card_to_launch_index].play_click_animation()
-                self.gesture_cooldown = 40 # Wait for user to open palm
-
+                self.gesture_cooldown = 40
         elif gesture == "OPEN_PALM" and self.is_awaiting_confirmation:
             if self.hovered_card_index == self.card_to_launch_index:
                 game_class = self.game_cards[self.card_to_launch_index].game_class
@@ -331,7 +367,6 @@ class HomePage(QMainWindow):
 
         self.game_grid_container.hide()
 
-        # Animations
         geom_anim = QPropertyAnimation(self.animating_card, b"geometry")
         geom_anim.setDuration(400)
         geom_anim.setEasingCurve(QEasingCurve.InOutCubic)
@@ -340,7 +375,7 @@ class HomePage(QMainWindow):
         glow_anim = QPropertyAnimation(self.animating_card.shadow, b"blurRadius")
         glow_anim.setDuration(400)
         glow_anim.setEasingCurve(QEasingCurve.InQuad)
-        glow_anim.setEndValue(200) # Large glow trail
+        glow_anim.setEndValue(200)
 
         self.launch_anim_group = QParallelAnimationGroup(self)
         self.launch_anim_group.addAnimation(geom_anim)
@@ -368,6 +403,8 @@ class HomePage(QMainWindow):
         self.hovered_card_index = -1
         self.is_awaiting_confirmation = False
         self.card_to_launch_index = -1
+        self.hovered_nav_index = -1
+        self.nav_awaiting_confirmation = False
 
     def closeEvent(self, event):
         self.cap.release()
