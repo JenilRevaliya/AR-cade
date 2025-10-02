@@ -129,6 +129,7 @@ class HomePage(QMainWindow):
         self.video_label = QLabel(self.central_widget)
 
         self.ui_overlay = QWidget(self.central_widget)
+        self.ui_overlay.setStyleSheet("background-color: transparent;")
         self.overlay_layout = QVBoxLayout(self.ui_overlay)
         self.overlay_layout.setContentsMargins(50, 20, 50, 20)
 
