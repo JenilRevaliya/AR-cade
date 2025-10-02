@@ -18,16 +18,6 @@ class GestureRecognizer:
         """Calculate Euclidean distance between two points."""
         return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2)
 
-    def _is_pinch(self, hand_landmarks):
-        """Detects a pinch gesture."""
-        thumb_tip = hand_landmarks.landmark[self.mp_hands.HandLandmark.THUMB_TIP]
-        index_tip = hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_TIP]
-        distance = self._get_distance(thumb_tip, index_tip)
-        # Normalize distance by the length of the index finger to make it scale-invariant
-        index_mcp = hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_MCP]
-        index_length = self._get_distance(index_tip, index_mcp)
-        return distance / index_length < 0.3
-
     def _is_open_palm(self, hand_landmarks):
         """Detects an open palm gesture."""
         # A simple heuristic: check if fingertips are far from the wrist
@@ -61,8 +51,6 @@ class GestureRecognizer:
 
     def recognize_gesture(self, hand_landmarks):
         """Recognizes a specific gesture from hand landmarks."""
-        if self._is_pinch(hand_landmarks):
-            return "PINCH"
         if self._is_closed_palm(hand_landmarks):
             return "CLOSED_PALM"
         if self._is_open_palm(hand_landmarks):
@@ -73,21 +61,23 @@ class GestureRecognizer:
         return "HAND_DETECTED"
 
     def process_frame(self, frame):
-        """Processes a single frame to detect and recognize hand gestures."""
+        """
+        Processes a single frame to detect hand gestures.
+        It returns the original frame, the latest gesture, and draws landmarks on a copy if needed.
+        """
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_rgb.flags.writeable = False # Performance optimization
+        frame_rgb.flags.writeable = False  # Performance optimization
         results = self.hands.process(frame_rgb)
-        frame.flags.writeable = True
 
         self.latest_gesture = None
         self.hand_landmarks = None
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-                self.mp_draw.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
+                # self.mp_draw.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
                 self.hand_landmarks = hand_landmarks
                 self.latest_gesture = self.recognize_gesture(hand_landmarks)
-                break # Process only one hand
+                break  # Process only one hand
 
         return frame, self.latest_gesture
 
