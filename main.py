@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from ui_homepage import HomePage
+from ui_dashboard import HomePage
 
 def main():
     """

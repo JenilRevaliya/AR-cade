@@ -74,7 +74,7 @@ class GestureRecognizer:
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-                # self.mp_draw.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
+                self.mp_draw.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
                 self.hand_landmarks = hand_landmarks
                 self.latest_gesture = self.recognize_gesture(hand_landmarks)
                 break  # Process only one hand
