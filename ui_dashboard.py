@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel, QHBoxLa
                              QVBoxLayout, QGridLayout, QGraphicsDropShadowEffect)
 import math
 from PyQt5.QtGui import (QPixmap, QColor, QFont, QPainter, QLinearGradient,
-                           QTransform)
+                           QTransform, QRegion)
 from PyQt5.QtCore import (QTimer, Qt, QPropertyAnimation, QEasingCurve, QPoint, QRect,
                            QSequentialAnimationGroup, QParallelAnimationGroup)
 from game_loader import load_games
@@ -64,7 +64,7 @@ class GameCard(QWidget):
         super().paintEvent(event)
         pixmap = QPixmap(self.main_widget.size())
         pixmap.fill(Qt.transparent)
-        self.main_widget.render(pixmap, QPoint(), self.main_widget.rect(), QWidget.RenderFlag.DrawChildren)
+        self.main_widget.render(pixmap, QPoint(), QRegion(self.main_widget.rect()), QWidget.RenderFlag.DrawChildren)
         reflection_pixmap = pixmap.transformed(QTransform().scale(1, -1))
         painter = QPainter(self)
         reflection_y = self.main_widget.y() + self.main_widget.height() + 5
@@ -138,7 +138,7 @@ class HomePage(QMainWindow):
 
         logo_label = QLabel("AR-cade Hub")
         logo_label.setAlignment(Qt.AlignCenter)
-        logo_label.setFont(QFont("Orbitron", 48, QFont.Bold))
+        logo_label.setFont(QFont("Segoe UI", 48, QFont.Bold))
         logo_label.setStyleSheet("color: #00FFFF; padding-bottom: 0px;")
 
         desc_label = QLabel("Select a game using only your hands")
