@@ -138,12 +138,12 @@ class HomePage(QMainWindow):
 
         logo_label = QLabel("AR-cade Hub")
         logo_label.setAlignment(Qt.AlignCenter)
-        logo_label.setFont(QFont("Segoe UI", 48, QFont.Bold))
+        logo_label.setFont(QFont("Arial", 48, QFont.Bold))
         logo_label.setStyleSheet("color: #00FFFF; padding-bottom: 0px;")
 
         desc_label = QLabel("Select a game using only your hands")
         desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setFont(QFont("Segoe UI", 16))
+        desc_label.setFont(QFont("Arial", 16))
         desc_label.setStyleSheet("color: #FFFFFF; padding-top: 0px;")
 
         # Navigation Bar
@@ -152,7 +152,7 @@ class HomePage(QMainWindow):
         nav_bar.setStyleSheet("""
             QLabel {
                 color: #FFFFFF;
-                font-family: 'Segoe UI';
+                font-family: 'Arial';
                 font-size: 16px;
                 padding: 10px 20px;
                 background-color: transparent;
@@ -270,7 +270,7 @@ class HomePage(QMainWindow):
         self.hologram_counter += 1
         for i, card in enumerate(self.game_cards):
             # Only animate cards that are not currently being interacted with
-            if i != self.hovered_card_index and i != self.selected_card_index:
+            if i != self.hovered_card_index and i != self.card_to_launch_index:
                 # Check if the main float-on-hover animation is running
                 if card.float_animation.state() == QPropertyAnimation.State.Stopped:
                     # Calculate new y position using a sine wave for smooth floating
