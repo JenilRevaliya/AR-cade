@@ -28,6 +28,7 @@ class Player:
         self.histogram = person_data.histogram; self.centroid = person_data.centroid
         self.person_data = person_data; self.hand_landmarks, self.hand_gesture, self.hand_closed = None, "OTHER", False
         self.frames_lost, self.consistent_frames = 0, 1
+    def predict(self): return self.kf.predict()
     def update(self, person_data: Person):
         self.kf.update(np.array([[person_data.centroid[0]], [person_data.centroid[1]]]))
         self.centroid = (int(self.kf.x[0, 0]), int(self.kf.x[2, 0]))
